@@ -1,0 +1,39 @@
+import random
+import string
+from flask import Flask, request, redirect, jsonify
+
+app = Flask(__name__)
+
+# Store URLs and their shortened versions
+url_mapping = {}
+
+def generate_short_url(length=6):
+    """Generate a random short URL."""
+    characters = string.ascii_letters + string.digits
+    return ''.join(random.choice(characters) for _ in range(length))
+
+@app.route('/shorten', methods=['POST'])
+def shorten_url():
+    """Shorten a given URL."""
+    original_url = request.json.get('url')
+    if not original_url:
+        return jsonify({'error': 'URL is required!'}), 400
+
+    short_url = generate_short_url()
+    while short_url in url_mapping:
+        short_url = generate_short_url()  # Ensure unique short URL
+
+    url_mapping[short_url] = original_url
+    return jsonify({'short_url': request.host_url + short_url}), 201
+
+@app.route('/<short_url>', methods=['GET'])
+def redirect_url(short_url):
+    """Redirect to the original URL."""
+    original_url = url_mapping.get(short_url)
+    if not original_url:
+        return jsonify({'error': 'URL not found!'}), 404
+
+    return redirect(original_url)
+
+if __name__ == '__main__':
+    app.run(debug=True)
